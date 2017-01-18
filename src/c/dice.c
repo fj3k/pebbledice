@@ -1,7 +1,7 @@
 #include <pebble.h>
 
 static Window *window;
-static TextLayer *text_layer;
+static TextLayer *text_layer, *dot_layer;
 
 char *modes[2] = {"Dice", "Card"};
 char *rolls[4] = {"1d6", "2d6", "1d12", "1d20"};
@@ -23,7 +23,6 @@ static void shuffle(int deck) {
   if (deck == 2) deckSize = 12;
   if (deck == 3) deckSize = 20;
 
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "deck = %d, cardIndex = %d, deckSize = %d", deck, cardIndex[deck], deckSize);
   if (cardIndex[deck] < (deckSize / 3 * 2)) return;
 
   int sortCount = (cardIndex[deck] > deckSize) ? deckSize : cardIndex[deck];
@@ -41,7 +40,6 @@ static void shuffle(int deck) {
   int nai = 0;
   for (; i < deckSize; i++) {
     cards[deck][nai] = cards[deck][i];
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "unshuffle deck = %d, nai = %d, card = %d", deck, (int)nai, cards[deck][nai]);
     nai++;
   }
 
@@ -51,7 +49,6 @@ static void shuffle(int deck) {
     int p = rand() % sortCount;
     while (sortarr[p] == -999) p = (p + 1) %  sortCount;
     cards[deck][nai] = sortarr[p];
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "shuffle deck = %d, nai = %d, card = %d", deck, (int)nai, cards[deck][nai]);
     sortarr[p] = -999;
     nai++;
   }
@@ -62,12 +59,14 @@ static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
   roll = (roll + 1) % 4;
   text_layer_set_text_color(text_layer, GColorBlack);
   text_layer_set_text(text_layer, rolls[roll]);
+  text_layer_set_text(dot_layer, "");
 }
 
 static void up_click_handler(ClickRecognizerRef recognizer, void *context) {
   mode = (mode + 1) % 2;
   text_layer_set_text_color(text_layer, GColorBlack);
   text_layer_set_text(text_layer, modes[mode]);
+  text_layer_set_text(dot_layer, "");
 }
 
 static void down_click_handler(ClickRecognizerRef recognizer, void *context) {
@@ -92,17 +91,51 @@ static void down_click_handler(ClickRecognizerRef recognizer, void *context) {
     cardIndex[roll]++; //No point normalising here, because we'd have to do it again anyway.
     shuffle(roll);
   }
-  if (val >= 10)
+  if (val >= 10) {
     str[0] = '0' + (val / 10);
-  else
-    str[0] = ' ';
-  str[1] = '0' + (val % 10);
-  if (roll == 1 && val > 5 && val < 9)
-    text_layer_set_text_color(text_layer, GColorDarkCandyAppleRed);
-  else if (roll == 1 && val > 4 && val < 10)
-    text_layer_set_text_color(text_layer, GColorBulgarianRose);
-  else
+    str[1] = '0' + (val % 10);
+  } else {
+    str[0] = '0' + (val % 10);
+    str[1] = '\0';
+  }
+  if (roll == 1) {
     text_layer_set_text_color(text_layer, GColorBlack);
+    text_layer_set_text_color(dot_layer, GColorBlack);
+    switch (val) {
+      case 6:
+      case 7:
+      case 8:
+        text_layer_set_text_color(text_layer, GColorDarkCandyAppleRed);
+        text_layer_set_text_color(dot_layer, GColorDarkCandyAppleRed);
+        if (val == 7) {
+          text_layer_set_text(dot_layer, "......");
+        } else {
+          text_layer_set_text(dot_layer, ".....");
+        }
+        break;
+      case 5:
+      case 9:
+        text_layer_set_text_color(text_layer, GColorBulgarianRose);
+        text_layer_set_text_color(dot_layer, GColorBulgarianRose);
+        text_layer_set_text(dot_layer, "....");
+        break;
+      case 4:
+      case 10:
+        text_layer_set_text(dot_layer, "...");
+        break;
+      case 3:
+      case 11:
+        text_layer_set_text(dot_layer, "..");
+        break;
+      case 2:
+      case 12:
+        text_layer_set_text(dot_layer, ".");
+        break;
+    }
+  } else {
+    text_layer_set_text_color(text_layer, GColorBlack);
+    text_layer_set_text(dot_layer, "");
+  }
   text_layer_set_text(text_layer, str);
 }
 
@@ -121,10 +154,16 @@ static void window_load(Window *window) {
   text_layer_set_font(text_layer, fonts_get_system_font(FONT_KEY_BITHAM_42_LIGHT));
   text_layer_set_text_alignment(text_layer, GTextAlignmentCenter);
   layer_add_child(window_layer, text_layer_get_layer(text_layer));
+  dot_layer = text_layer_create(GRect(0, (bounds.size.h - 50) / 2 + 45, bounds.size.w, 20));
+  text_layer_set_text(dot_layer, "");
+  text_layer_set_font(dot_layer, fonts_get_system_font(FONT_KEY_LECO_20_BOLD_NUMBERS));
+  text_layer_set_text_alignment(dot_layer, GTextAlignmentCenter);
+  layer_add_child(window_layer, text_layer_get_layer(dot_layer));
 }
 
 static void window_unload(Window *window) {
   text_layer_destroy(text_layer);
+  text_layer_destroy(dot_layer);
 }
 
 static void init(void) {
