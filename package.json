@@ -1,0 +1,36 @@
+{
+    "author": "emmaps@fj3k.com",
+    "dependencies": {},
+    "keywords": [],
+    "name": "pebble-dice",
+    "pebble": {
+        "displayName": "Pebble Dice",
+        "enableMultiJS": true,
+        "messageKeys": [],
+        "projectType": "native",
+        "resources": {
+            "media": [
+                {
+                    "file": "images/dice.png",
+                    "menuIcon": true,
+                    "name": "IMAGE_ICO",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                }
+            ]
+        },
+        "sdkVersion": "3",
+        "targetPlatforms": [
+            "aplite",
+            "basalt",
+            "chalk",
+            "diorite",
+            "emery"
+        ],
+        "uuid": "ac15c007-0288-4489-a0e4-7933bd1b7923",
+        "watchapp": {
+            "watchface": false
+        }
+    },
+    "version": "1.0.0"
+}
