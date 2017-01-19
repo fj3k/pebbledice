@@ -2,6 +2,7 @@
 
 static Window *window;
 static TextLayer *text_layer, *dot_layer;
+static AnimationImplementation animplementation;
 
 char *modes[2] = {"Dice", "Card"};
 char *rolls[4] = {"1d6", "2d6", "1d12", "1d20"};
@@ -55,21 +56,20 @@ static void shuffle(int deck) {
   cardIndex[deck] = 0;
 }
 
-static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
-  roll = (roll + 1) % 4;
-  text_layer_set_text_color(text_layer, GColorBlack);
-  text_layer_set_text(text_layer, rolls[roll]);
-  text_layer_set_text(dot_layer, "");
+static void set_dots(int num, char *dot) {
+  char *str = "                        \0";
+  int i = 0;
+  for (; i < num * 4; i += 4) {
+    for (int j = 0; j < 4; j++) {
+      str[i+j] = dot[j];
+    }
+  }
+  for (; i < 6*4; i++)
+    str[i] = '\0';
+  text_layer_set_text(dot_layer, str);
 }
 
-static void up_click_handler(ClickRecognizerRef recognizer, void *context) {
-  mode = (mode + 1) % 2;
-  text_layer_set_text_color(text_layer, GColorBlack);
-  text_layer_set_text(text_layer, modes[mode]);
-  text_layer_set_text(dot_layer, "");
-}
-
-static void down_click_handler(ClickRecognizerRef recognizer, void *context) {
+static void do_roll() {
   char *str = "  ";
   int val = 0;
   if (mode == 0) {
@@ -108,28 +108,28 @@ static void down_click_handler(ClickRecognizerRef recognizer, void *context) {
         text_layer_set_text_color(text_layer, GColorDarkCandyAppleRed);
         text_layer_set_text_color(dot_layer, GColorDarkCandyAppleRed);
         if (val == 7) {
-          text_layer_set_text(dot_layer, "......");
+          set_dots(6, "\U0001F60E");
         } else {
-          text_layer_set_text(dot_layer, ".....");
+          set_dots(5, "\U0001F603");
         }
         break;
       case 5:
       case 9:
         text_layer_set_text_color(text_layer, GColorBulgarianRose);
         text_layer_set_text_color(dot_layer, GColorBulgarianRose);
-        text_layer_set_text(dot_layer, "....");
+        set_dots(4, "\U0001F60A");
         break;
       case 4:
       case 10:
-        text_layer_set_text(dot_layer, "...");
+        set_dots(3, "\U0001F609");
         break;
       case 3:
       case 11:
-        text_layer_set_text(dot_layer, "..");
+        set_dots(2, "\U0001F610");
         break;
       case 2:
       case 12:
-        text_layer_set_text(dot_layer, ".");
+        set_dots(1, "\U0001F626");
         break;
     }
   } else {
@@ -137,6 +137,69 @@ static void down_click_handler(ClickRecognizerRef recognizer, void *context) {
     text_layer_set_text(dot_layer, "");
   }
   text_layer_set_text(text_layer, str);
+}
+
+static void implementation_setup(Animation *animation) {}
+
+static void implementation_update(Animation *animation, const AnimationProgress progress) {
+  char *str = "  ";
+  int val = 0;
+  int diceSize = 6;
+  if (roll == 2) diceSize = 12;
+  if (roll == 3) diceSize = 20;
+  int diceCount = 1;
+  if (roll == 1) diceCount = 2;
+  for (int i = 0; i < diceCount; i++) {
+    val += rand() % diceSize + 1;
+  }
+  if (val >= 10) {
+    str[0] = '0' + (val / 10);
+    str[1] = '0' + (val % 10);
+  } else {
+    str[0] = '0' + (val % 10);
+    str[1] = '\0';
+  }
+  text_layer_set_text_color(text_layer, GColorBlue);
+  text_layer_set_text(text_layer, str);
+}
+
+static void implementation_teardown(Animation *animation) {
+  do_roll();
+}
+
+static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
+  roll = (roll + 1) % 4;
+  text_layer_set_text_color(text_layer, GColorBlack);
+  text_layer_set_text(text_layer, rolls[roll]);
+  text_layer_set_text(dot_layer, "                        \0");
+}
+
+static void up_click_handler(ClickRecognizerRef recognizer, void *context) {
+  mode = (mode + 1) % 2;
+  text_layer_set_text_color(text_layer, GColorBlack);
+  text_layer_set_text(text_layer, modes[mode]);
+  text_layer_set_text(dot_layer, "                        \0");
+}
+
+static void down_click_handler(ClickRecognizerRef recognizer, void *context) {
+  text_layer_set_text_color(text_layer, GColorBlack);
+  text_layer_set_text(text_layer, "  ");
+  text_layer_set_text(dot_layer, "                        \0");
+  //do_roll();
+  Animation *animation = animation_create();
+  animation_set_delay(animation, 500);
+  animation_set_duration(animation, 500);
+  
+  // Create the AnimationImplementation
+  animplementation = (AnimationImplementation) {
+    .setup = implementation_setup,
+    .update = implementation_update,
+    .teardown = implementation_teardown
+  };
+  animation_set_implementation(animation, &animplementation);
+  
+  // Play the Animation
+  animation_schedule(animation);
 }
 
 static void click_config_provider(void *context) {
@@ -154,9 +217,10 @@ static void window_load(Window *window) {
   text_layer_set_font(text_layer, fonts_get_system_font(FONT_KEY_BITHAM_42_LIGHT));
   text_layer_set_text_alignment(text_layer, GTextAlignmentCenter);
   layer_add_child(window_layer, text_layer_get_layer(text_layer));
-  dot_layer = text_layer_create(GRect(0, (bounds.size.h - 50) / 2 + 45, bounds.size.w, 20));
-  text_layer_set_text(dot_layer, "");
-  text_layer_set_font(dot_layer, fonts_get_system_font(FONT_KEY_LECO_20_BOLD_NUMBERS));
+  dot_layer = text_layer_create(GRect(0, (bounds.size.h - 50) / 2 + 45, bounds.size.w, 24));
+  text_layer_set_text(dot_layer, "                        \0");
+  //text_layer_set_font(dot_layer, fonts_get_system_font(FONT_KEY_LECO_20_BOLD_NUMBERS));
+  text_layer_set_font(dot_layer, fonts_get_system_font(FONT_KEY_GOTHIC_24));
   text_layer_set_text_alignment(dot_layer, GTextAlignmentCenter);
   layer_add_child(window_layer, text_layer_get_layer(dot_layer));
 }
