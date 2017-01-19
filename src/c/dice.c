@@ -139,7 +139,10 @@ static void do_roll() {
   text_layer_set_text(text_layer, str);
 }
 
-static void implementation_setup(Animation *animation) {}
+static void implementation_setup(Animation *animation) {
+  text_layer_set_text_color(text_layer, GColorDarkGray);
+  text_layer_set_text(dot_layer, "");
+}
 
 static void implementation_update(Animation *animation, const AnimationProgress progress) {
   char *str = "  ";
@@ -159,7 +162,7 @@ static void implementation_update(Animation *animation, const AnimationProgress 
     str[0] = '0' + (val % 10);
     str[1] = '\0';
   }
-  text_layer_set_text_color(text_layer, GColorBlue);
+  text_layer_set_text_color(text_layer, GColorDarkGray);
   text_layer_set_text(text_layer, str);
 }
 
@@ -171,23 +174,20 @@ static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
   roll = (roll + 1) % 4;
   text_layer_set_text_color(text_layer, GColorBlack);
   text_layer_set_text(text_layer, rolls[roll]);
-  text_layer_set_text(dot_layer, "                        \0");
+  text_layer_set_text(dot_layer, "");
 }
 
 static void up_click_handler(ClickRecognizerRef recognizer, void *context) {
   mode = (mode + 1) % 2;
   text_layer_set_text_color(text_layer, GColorBlack);
   text_layer_set_text(text_layer, modes[mode]);
-  text_layer_set_text(dot_layer, "                        \0");
+  text_layer_set_text(dot_layer, "");
 }
 
 static void down_click_handler(ClickRecognizerRef recognizer, void *context) {
-  text_layer_set_text_color(text_layer, GColorBlack);
-  text_layer_set_text(text_layer, "  ");
-  text_layer_set_text(dot_layer, "                        \0");
   //do_roll();
   Animation *animation = animation_create();
-  animation_set_delay(animation, 500);
+  animation_set_delay(animation, 100);
   animation_set_duration(animation, 500);
   
   // Create the AnimationImplementation
