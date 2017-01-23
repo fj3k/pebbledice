@@ -5,11 +5,18 @@ static TextLayer *text_layer, *dot_layer;
 static AnimationImplementation animplementation;
 
 char *modes[2] = {"Dice", "Card"};
-char *rolls[4] = {"1d6", "2d6", "1d12", "1d20"};
+char *coin_modes[3] = {"Hds/Tls", "Yes/no", "Win/lose"};
+char *rolls[5] = {"1d6", "2d6", "1d12", "1d20", "Coin"};
 int mode = 0;
+int coin_mode = 0;
 int roll = 0;
 int *cards[4];
 int cardIndex[4] = {0, 0, 0, 0};
+char *coin_sides[3][2] = {
+  {"Heads", "Tails"},
+  {"Yes", "No"},
+  {"I win", "You lose"}
+};
 
 static void shuffle(int deck) {
   if (deck == -1) {
@@ -139,53 +146,72 @@ static void do_roll() {
   text_layer_set_text(text_layer, str);
 }
 
+static void do_flip() {
+  int side = rand() % 2;
+  text_layer_set_text_color(text_layer, GColorBlack);
+  text_layer_set_text(text_layer, coin_sides[coin_mode][side]);
+}
+
 static void implementation_setup(Animation *animation) {
   text_layer_set_text_color(text_layer, GColorDarkGray);
   text_layer_set_text(dot_layer, "");
 }
 
 static void implementation_update(Animation *animation, const AnimationProgress progress) {
-  char *str = "  ";
-  int val = 0;
-  int diceSize = 6;
-  if (roll == 2) diceSize = 12;
-  if (roll == 3) diceSize = 20;
-  int diceCount = 1;
-  if (roll == 1) diceCount = 2;
-  for (int i = 0; i < diceCount; i++) {
-    val += rand() % diceSize + 1;
-  }
-  if (val >= 10) {
-    str[0] = '0' + (val / 10);
-    str[1] = '0' + (val % 10);
+  if (roll < 4) {
+    char *str = "  ";
+    int val = 0;
+    int diceSize = 6;
+    if (roll == 2) diceSize = 12;
+    if (roll == 3) diceSize = 20;
+    int diceCount = 1;
+    if (roll == 1) diceCount = 2;
+    for (int i = 0; i < diceCount; i++) {
+      val += rand() % diceSize + 1;
+    }
+    if (val >= 10) {
+      str[0] = '0' + (val / 10);
+      str[1] = '0' + (val % 10);
+    } else {
+      str[0] = '0' + (val % 10);
+      str[1] = '\0';
+    }
+    text_layer_set_text_color(text_layer, GColorDarkGray);
+    text_layer_set_text(text_layer, str);
   } else {
-    str[0] = '0' + (val % 10);
-    str[1] = '\0';
+    int side = rand() % 2;
+    text_layer_set_text_color(text_layer, GColorDarkGray);
+    text_layer_set_text(text_layer, coin_sides[coin_mode][side]);
   }
-  text_layer_set_text_color(text_layer, GColorDarkGray);
-  text_layer_set_text(text_layer, str);
 }
 
 static void implementation_teardown(Animation *animation) {
-  do_roll();
+  if (roll < 4)
+    do_roll();
+  else
+    do_flip();
 }
 
 static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
-  roll = (roll + 1) % 4;
+  roll = (roll + 1) % 5;
   text_layer_set_text_color(text_layer, GColorBlack);
   text_layer_set_text(text_layer, rolls[roll]);
   text_layer_set_text(dot_layer, "");
 }
 
 static void up_click_handler(ClickRecognizerRef recognizer, void *context) {
-  mode = (mode + 1) % 2;
   text_layer_set_text_color(text_layer, GColorBlack);
-  text_layer_set_text(text_layer, modes[mode]);
+  if (roll < 4) {
+    mode = (mode + 1) % 2;
+    text_layer_set_text(text_layer, modes[mode]);
+  } else {
+    coin_mode = (coin_mode + 1) % 3;
+    text_layer_set_text(text_layer, coin_modes[coin_mode]);
+  }
   text_layer_set_text(dot_layer, "");
 }
 
 static void down_click_handler(ClickRecognizerRef recognizer, void *context) {
-  //do_roll();
   Animation *animation = animation_create();
   animation_set_delay(animation, 100);
   animation_set_duration(animation, 500);
